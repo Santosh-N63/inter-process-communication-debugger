@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
 import time
-import threading
 from queue import Queue
 
 # -------------------------
@@ -54,7 +53,6 @@ class IPCDebugger:
         self.root.geometry("1100x650")
 
         self.processes = []
-        self.selected_processes = []
         self.links = []
         self.logs = []
 
@@ -82,6 +80,11 @@ class IPCDebugger:
         tk.Label(right_frame, text="Debugger Logs", font=("Arial", 14)).pack()
         self.log_box = tk.Text(right_frame, height=25, width=40)
         self.log_box.pack()
+
+        # Input field for messages
+        tk.Label(right_frame, text="Enter Message:", font=("Arial", 12)).pack(pady=5)
+        self.msg_entry = tk.Entry(right_frame, width=30, font=("Arial", 12))
+        self.msg_entry.pack(pady=5)
 
         # Control Buttons
         tk.Button(right_frame, text="Add Process", command=self.add_process).pack(pady=10)
@@ -142,14 +145,20 @@ class IPCDebugger:
             messagebox.showwarning("Error", "No IPC link exists.")
             return
 
-        p1, p2 = self.links[-1]
-        msg = f"MSG{len(self.logs)}"
+        user_msg = self.msg_entry.get().strip()
 
-        if self.msg_queue.send(msg):
-            self.log(f"{p1.name} → {p2.name}: Sent '{msg}'")
-            self.animate_message(p1, p2, msg)
+        if user_msg == "":
+            messagebox.showwarning("Input Error", "Please enter a message to send.")
+            return
+
+        p1, p2 = self.links[-1]
+
+        if self.msg_queue.send(user_msg):
+            self.log(f"{p1.name} → {p2.name}: Sent '{user_msg}'")
+            self.animate_message(p1, p2, user_msg)
+            self.msg_entry.delete(0, tk.END)
         else:
-            self.log(f"{p1.name} BLOCKED while sending '{msg}'")
+            self.log(f"{p1.name} BLOCKED while sending '{user_msg}'")
             self.canvas.create_text(350, 300, text="DEADLOCK!", font=("Arial", 30), fill="red")
             messagebox.showerror("Deadlock Detected", "Queue overflow! Deadlock detected.")
 
@@ -180,11 +189,14 @@ class IPCDebugger:
         self.add_process()
         self.add_process()
         self.create_link()
+        self.msg_entry.insert(0, "Hello")
         self.send_message()
+        self.msg_entry.insert(0, "Data2")
         self.send_message()
-        self.send_message()  # Triggers deadlock
+        self.msg_entry.insert(0, "Data3")  # Should overflow and deadlock
+        self.send_message()
+
 
 # Start simulator
 IPCDebugger()
-
 
